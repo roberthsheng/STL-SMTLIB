@@ -49,7 +49,6 @@ def parse(tokens):
     # Consume the next token from the stream
     def consume(expected_kind):
         nonlocal index
-        print(peek())
         if peek()[0] == expected_kind:
             index += 1
             return tokens[index - 1]
@@ -70,16 +69,16 @@ def parse(tokens):
             expr = parse_expression()
             consume('RB')
             return expr
-        elif kind == 'NEG':
-            consume('NEG')
-            expr = parse_expression()
-            return ('NOT', expr)
         elif kind == 'ABS':
             consume('ABS')
             if value == '⊤':
                 return ('BOOL_OP', '⊤')
             elif value == '⊥':
                 return ('BOOL_OP', '⊥')
+        elif kind == 'NEG':
+            consume('NEG')
+            atom = parse_atom()
+            return ('NOT', atom)
         else:
             raise ValueError(f'Unexpected {kind}')
 
@@ -178,7 +177,7 @@ def translate(node):
         end_time_code = translate(end_time)
         first_condition_code = translate(first_condition)
         second_condition_code = translate(second_condition)
-        return f'(exists ((k Int)) (and (>= k {start_time_code}) (<= k {end_time_code}) (forall ((l Int)) (and (>= l 0) (< l k) {first_condition_code})) {second_condition_code})'
+        return f'(exists ((k Int)) (and (>= k {start_time_code}) (<= k {end_time_code}) (forall ((l Int)) (and (>= l 0) (< l k) {first_condition_code})) {second_condition_code}))'
 
 
 def test_stl_to_smtlib():
@@ -191,11 +190,11 @@ def test_stl_to_smtlib():
         ("⊥ ∧ x", "(and false x)"), 
         ("¬(⊤ ∨ x)", "(not (or true x))"),
         ("¬(⊥ ∧ x)", "(not (and false x))"),
-        ("[0, 10] (x ≥ 3) U (y ≥ 5)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (>= y 5))"),
-        ("[2, 5] (a + b ≥ 4) U (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= (add a b) 4))) (>= c 2))"),
-        ("[0, 10] (x ≥ 3) U (y ≥ 5) ∧ (z ≥ 2)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (and (>= y 5) (>= z 2)))"),
-        ("[0, 10] (y ≥ 5) ∧ (z ≥ 2) U (x ≥ 3)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (and (>= y 5) (>= z 2)))) (>= x 3))"),
-        # ("[0, 10] ¬(y ≥ 5) ∧ ⊤ U ⊥", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (not (>= y 5)))) false)"),
+        ("[0, 10] (x ≥ 3) U (y ≥ 5)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (>= y 5)))"),
+        ("[2, 5] (a + b ≥ 4) U (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= (add a b) 4))) (>= c 2)))"),
+        ("[0, 10] (x ≥ 3) U (y ≥ 5) ∧ (z ≥ 2)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (and (>= y 5) (>= z 2))))"),
+        ("[0, 10] (y ≥ 5) ∧ (z ≥ 2) U (x ≥ 3)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (and (>= y 5) (>= z 2)))) (>= x 3)))"),
+        ("[0, 10] ¬(y ≥ 5) ∧ ⊤ U ⊥", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (and (not (>= y 5)) true))) false))")
     ]
 
     for stl, expected_smtlib in tests:
