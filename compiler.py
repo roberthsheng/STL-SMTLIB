@@ -15,7 +15,8 @@ def tokenize(expr):
         ('NUMBER', r'\d+(\.\d*)?'),  
         ('VAR', r'[a-zA-Z_][a-zA-Z_0-9]*\b(?<!U)'),  # VAR cannot be U
         ('UNTIL', r'U'),  
-        ('BOOL_OP', r'[∨∧⊤⊥]'),  
+        ('BOOL_OP', r'[∨∧]'),  
+        ('ABS', r'[⊤⊥]'),
         ('NEG', r'¬'),  
         ('GEQ', r'≥'),  
         ('PLUS', r'\+'),
@@ -69,6 +70,16 @@ def parse(tokens):
             expr = parse_expression()
             consume('RB')
             return expr
+        elif kind == 'NEG':
+            consume('NEG')
+            expr = parse_expression()
+            return ('NOT', expr)
+        elif kind == 'ABS':
+            consume('ABS')
+            if value == '⊤':
+                return ('BOOL_OP', '⊤')
+            elif value == '⊥':
+                return ('BOOL_OP', '⊥')
         else:
             raise ValueError(f'Unexpected {kind}')
 
@@ -83,9 +94,6 @@ def parse(tokens):
 
     # Parse an inequality
     def parse_inequality():
-        kind, _ = peek()
-        if kind == 'EOF':
-            return None
         left = parse_term()
         if peek()[0] == 'GEQ':
             consume('GEQ')
@@ -103,48 +111,29 @@ def parse(tokens):
             left = ('BOOL_OP', op, left, right)
         return left
 
+    # Parse until
     def parse_until():
-        # Parse the time bounds
         consume('LSQB')
         start_time = parse_term()
         consume('COMMA')
         end_time = parse_term()
         consume('RSQB')
 
-        # Parse the first condition (this should be the condition to hold until the second condition is met)
         first_condition = parse_expression()
-        
-        # Parse the UNTIL operator
         consume('UNTIL')
-
-        # Parse the second condition (this should be the condition that is met)
         second_condition = parse_expression()
 
         return ('UNTIL', start_time, end_time, first_condition, second_condition)
 
-
+    # Parse an expression
     def parse_expression():
-        if peek()[0] == 'NOT':
-            consume('NOT')
-            consume('LB')
-            child = parse_expression()
-            consume('RB')
-            return ('NOT', child)
-        elif peek()[0] == 'AND':
-            consume('AND')
-            consume('LB')
-            left = parse_expression()
-            consume('COMMA')
-            right = parse_expression()
-            consume('RB')
-            return ('AND', left, right)
-        elif peek()[0] == 'UNTIL':
+        if peek()[0] == 'LSQB':
             return parse_until()
         else:
             return parse_boolean()
 
     # Start parsing
-    return parse_until()
+    return parse_expression()
 
 def translate(node):
     kind = node[0]
@@ -152,22 +141,21 @@ def translate(node):
         return str(node[1])
     elif kind == 'VAR':
         return node[1]
-    elif kind == 'OP':
-        op, left, right = node[1:]
-        left_code = translate(left)
-        right_code = translate(right)
-        return f'({op} {left_code} {right_code})'
-    elif kind == 'GEQ':
-        _, left, right = node
-        left_code = translate(left)
-        right_code = translate(right)
-        return f'(>= {left_code} {right_code})'
     elif kind == 'PLUS':
         _, left, right = node
         left_code = translate(left)
         right_code = translate(right)
         return f'(add {left_code} {right_code})'
+    elif kind == 'GEQ':
+        _, left, right = node
+        left_code = translate(left)
+        right_code = translate(right)
+        return f'(>= {left_code} {right_code})'
     elif kind == 'BOOL_OP':
+        if node[1] == '⊤':
+            return 'true'
+        elif node[1] == '⊥':
+            return 'false'
         op, left, right = node[1:]
         left_code = translate(left)
         right_code = translate(right)
@@ -180,20 +168,34 @@ def translate(node):
         elif op == '⊥':
             return 'false'
         return f'({op} {left_code} {right_code})'
+    elif kind == 'NOT':
+        _, expr = node
+        expr_code = translate(expr)
+        return f'(not {expr_code})'
     elif kind == 'UNTIL':
-        start_time, end_time, left, right = node[1:]
+        start_time, end_time, first_condition, second_condition = node[1:]
         start_time_code = translate(start_time)
         end_time_code = translate(end_time)
-        left_code = translate(left)
-        right_code = translate(right)
-        return f'(exists ((k Int)) (and (>= k {start_time_code}) (<= k {end_time_code}) (forall ((l Int)) (and (>= l 0) (< l k) {left_code})) {right_code})'
+        first_condition_code = translate(first_condition)
+        second_condition_code = translate(second_condition)
+        return f'(exists ((k Int)) (and (>= k {start_time_code}) (<= k {end_time_code}) (forall ((l Int)) (and (>= l 0) (< l k) {first_condition_code})) {second_condition_code})'
 
 
 def test_stl_to_smtlib():
     tests = [
+        ("⊤", "true"), 
+        ("⊥", "false"), 
+        ("¬x", "(not x)"), 
+        ("¬(x ∧ y)", "(not (and x y))"), 
+        ("⊤ ∨ x", "(or true x)"), 
+        ("⊥ ∧ x", "(and false x)"), 
+        ("¬(⊤ ∨ x)", "(not (or true x))"),
+        ("¬(⊥ ∧ x)", "(not (and false x))"),
         ("[0, 10] (x ≥ 3) U (y ≥ 5)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (>= y 5))"),
         ("[2, 5] (a + b ≥ 4) U (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= (add a b) 4))) (>= c 2))"),
         ("[0, 10] (x ≥ 3) U (y ≥ 5) ∧ (z ≥ 2)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (and (>= y 5) (>= z 2)))"),
+        ("[0, 10] (y ≥ 5) ∧ (z ≥ 2) U (x ≥ 3)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (and (>= y 5) (>= z 2)))) (>= x 3))"),
+        # ("[0, 10] ¬(y ≥ 5) ∧ ⊤ U ⊥", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (not (>= y 5)))) false)"),
     ]
 
     for stl, expected_smtlib in tests:
