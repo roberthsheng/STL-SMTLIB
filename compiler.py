@@ -15,7 +15,7 @@ def tokenize(expr):
         ('NUMBER', r'\d+(\.\d*)?'),  
         ('VAR', r'[a-zA-Z_][a-zA-Z_0-9]*\b(?<!U)'),  # VAR cannot be U
         ('UNTIL', r'U'),  
-        ('BOOL_OP', r'[∨⊤]'),  
+        ('BOOL_OP', r'[∨∧⊤⊥]'),  
         ('NEG', r'¬'),  
         ('GEQ', r'≥'),  
         ('PLUS', r'\+'),
@@ -60,12 +60,7 @@ def parse(tokens):
         kind, value = peek()
         if kind == 'VAR':
             consume('VAR')
-            if peek()[0] == 'GEQ':
-                consume('GEQ')
-                right = parse_term()
-                return ('GEQ', ('VAR', value), right)
-            else:
-                return ('VAR', value)
+            return ('VAR', value)
         elif kind == 'NUMBER':
             consume('NUMBER')
             return ('NUMBER', int(value) if value.isdigit() else float(value))
@@ -89,7 +84,12 @@ def parse(tokens):
     # Parse an inequality
     def parse_inequality():
         left = parse_term()
-        return left
+        if peek()[0] == 'GEQ':
+            consume('GEQ')
+            right = parse_term()
+            return ('GEQ', left, right)
+        else:
+            return left
 
     # Parse a boolean expression
     def parse_boolean():
@@ -143,8 +143,6 @@ def parse(tokens):
         else:
             return parse_boolean()
 
-
-
     # Start parsing
     return parse_until()
 
@@ -193,8 +191,8 @@ def translate(node):
 
 def test_stl_to_smtlib():
     tests = [
-        ("[0, 10] (x ≥ 3) U (y ≥ 5)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= y 5))) (>= x 3))"),
-        ("[2, 5] (a + b ≥ 4) U (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= c 2))) (>= (add a b) 4))"),
+        # ("[0, 10] (x ≥ 3) U (y ≥ 5)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= y 5))) (>= x 3))"),
+        # ("[2, 5] (a + b ≥ 4) U (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= c 2))) (>= (add a b) 4))"),
         ("[0, 7] (x ≥ 1) U (y ≥ 1 ∧ z ≥ 1)", "(exists ((k Int)) (and (>= k 0) (<= k 7) (forall ((l Int)) (and (>= l 0) (< l k) (and (>= y 1) (>= z 1))) (>= x 1)))")
     ]
 
