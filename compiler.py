@@ -43,7 +43,7 @@ def parse(tokens):
         if index + n < len(tokens):
             return tokens[index + n]
         else:
-            return None
+            return ('EOF', None)
 
     # Consume the next token from the stream
     def consume(expected_kind):
@@ -83,6 +83,9 @@ def parse(tokens):
 
     # Parse an inequality
     def parse_inequality():
+        kind, _ = peek()
+        if kind == 'EOF':
+            return None
         left = parse_term()
         if peek()[0] == 'GEQ':
             consume('GEQ')
@@ -109,19 +112,16 @@ def parse(tokens):
         consume('RSQB')
 
         # Parse the first condition (this should be the condition to hold until the second condition is met)
-        consume('LB')
-        second_condition = parse_expression() # This condition will be used as the second condition (U)
-        consume('RB')
-
+        first_condition = parse_expression()
+        
         # Parse the UNTIL operator
         consume('UNTIL')
 
         # Parse the second condition (this should be the condition that is met)
-        consume('LB')
-        first_condition = parse_expression() # This condition will be used as the first condition
-        consume('RB')
+        second_condition = parse_expression()
 
         return ('UNTIL', start_time, end_time, first_condition, second_condition)
+
 
     def parse_expression():
         if peek()[0] == 'NOT':
@@ -191,9 +191,9 @@ def translate(node):
 
 def test_stl_to_smtlib():
     tests = [
-        # ("[0, 10] (x ≥ 3) U (y ≥ 5)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= y 5))) (>= x 3))"),
-        # ("[2, 5] (a + b ≥ 4) U (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= c 2))) (>= (add a b) 4))"),
-        ("[0, 7] (x ≥ 1) U (y ≥ 1 ∧ z ≥ 1)", "(exists ((k Int)) (and (>= k 0) (<= k 7) (forall ((l Int)) (and (>= l 0) (< l k) (and (>= y 1) (>= z 1))) (>= x 1)))")
+        ("[0, 10] (x ≥ 3) U (y ≥ 5)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (>= y 5))"),
+        ("[2, 5] (a + b ≥ 4) U (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= (add a b) 4))) (>= c 2))"),
+        ("[0, 10] (x ≥ 3) U (y ≥ 5) ∧ (z ≥ 2)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (and (>= y 5) (>= z 2)))"),
     ]
 
     for stl, expected_smtlib in tests:
