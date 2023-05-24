@@ -26,6 +26,8 @@ def tokenize(expr):
         ('LSQB', r'\['),  
         ('RSQB', r'\]'),  
         ('COMMA', r','),  
+        ('LOWER', r'(?<=\[)\d{1,6}(?=,)'),
+        ('UPPER', r'(?<=,)\d{1,6}(?=\])'),
         ('WHITESPACE', r'\s+'),  
     ]
 
@@ -50,11 +52,12 @@ def parse(tokens):
     # Consume the next token from the stream
     def consume(expected_kind):
         nonlocal index
-        if peek()[0] == expected_kind:
+        kind, value = peek()
+        if kind == expected_kind or (kind == 'NUMBER' and expected_kind in ('LOWER', 'UPPER')):
             index += 1
-            return tokens[index - 1]
+            return kind, value
         else:
-            raise ValueError(f'Expected {expected_kind} but got {peek()[0]}')
+            raise ValueError(f'Expected {expected_kind} but got {kind}')
 
     # Parse an atomic expression
     def parse_atom():
@@ -120,9 +123,9 @@ def parse(tokens):
         consume('UNTIL')
 
         consume('LSQB')
-        start_time = parse_term()
+        start_time = consume('LOWER')
         consume('COMMA')
-        end_time = parse_term()
+        end_time = consume('UPPER')
         consume('RSQB')
 
         second_condition = parse_expression()
