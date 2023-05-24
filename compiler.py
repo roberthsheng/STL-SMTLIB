@@ -12,7 +12,8 @@ def stl_to_smtlib(stl_code):
 
 def tokenize(expr):
     TOKEN_SPECIFICATION = [
-        ('NUMBER', r'\d+(\.\d*)?'),  
+        ('COEFF', r'\b\d+(\.\d+)?[a-zA-Z_][a-zA-Z_0-9]*\b(?<!U)'),  # Coefficient with variable, now allows rational numbers
+        ('NUMBER', r'\b\d+(\.\d*)?\b'),  
         ('VAR', r'[a-zA-Z_][a-zA-Z_0-9]*\b(?<!U)'),  # VAR cannot be U
         ('UNTIL', r'U'),  
         ('BOOL_OP', r'[∨∧]'),  
@@ -64,6 +65,10 @@ def parse(tokens):
         elif kind == 'NUMBER':
             consume('NUMBER')
             return ('NUMBER', int(value) if value.isdigit() else float(value))
+        elif kind == 'COEFF':
+            consume('COEFF')
+            coeff, var = value[:-1], value[-1]
+            return ('COEFF', (int(coeff) if coeff.isdigit() else float(coeff), var))
         elif kind == 'LB':
             consume('LB')
             expr = parse_expression()
@@ -140,6 +145,9 @@ def translate(node):
         return str(node[1])
     elif kind == 'VAR':
         return node[1]
+    elif kind == 'COEFF':
+        coeff, var = node[1]
+        return f'(* {coeff} {var})'
     elif kind == 'PLUS':
         _, left, right = node
         left_code = translate(left)
@@ -194,7 +202,12 @@ def test_stl_to_smtlib():
         ("[2, 5] (a + b ≥ 4) U (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= (add a b) 4))) (>= c 2)))"),
         ("[0, 10] (x ≥ 3) U (y ≥ 5) ∧ (z ≥ 2)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (>= x 3))) (and (>= y 5) (>= z 2))))"),
         ("[0, 10] (y ≥ 5) ∧ (z ≥ 2) U (x ≥ 3)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (and (>= y 5) (>= z 2)))) (>= x 3)))"),
-        ("[0, 10] ¬(y ≥ 5) ∧ ⊤ U ⊥", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (and (not (>= y 5)) true))) false))")
+        ("[0, 10] ¬(y ≥ 5) ∧ ⊤ U ⊥", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (and (not (>= y 5)) true))) false))"),
+        ("2.95x ≥ 9", "(>= (* 2.95 x) 9)"),
+        ("3x + 2y ≥ 9", "(>= (add (* 3 x) (* 2 y)) 9)"),
+        ("[2, 5] (2a + b ≥ 4) U (3c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (< l k) (>= (add (* 2 a) b) 4))) (>= (* 3 c) 2)))"),
+        ("2x ≥ 6 ∧ 3y ≥ 9", "(and (>= (* 2 x) 6) (>= (* 3 y) 9))"),
+        ("[0, 10] ¬(4.5y ≥ 20) ∧ ⊤ U ⊥", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (< l k) (and (not (>= (* 4.5 y) 20)) true))) false))")
     ]
 
     for stl, expected_smtlib in tests:
