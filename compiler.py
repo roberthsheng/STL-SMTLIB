@@ -185,12 +185,17 @@ def translate(node):
         expr_code = translate(expr)
         return f'(not {expr_code})'
     elif kind == 'UNTIL':
-        start_time, end_time, first_condition, second_condition = node[1:]
-        start_time_code = translate(start_time)
-        end_time_code = translate(end_time)
+        _, start_time, end_time, first_condition, second_condition = node
+        start_time = int(translate(start_time))
+        end_time = int(translate(end_time))
         first_condition_code = translate(first_condition)
         second_condition_code = translate(second_condition)
-        return f'(exists ((k Int)) (and (>= k {start_time_code}) (<= k {end_time_code}) (forall ((l Int)) (and (>= l 0) (<= l k) {first_condition_code})) {second_condition_code}))'
+        condition_list = []
+        for k in range(start_time, end_time+1):
+            for l in range(0, k+1):
+                condition_list.append(f"(= l {l} {first_condition_code})")
+        conditions = " ".join(condition_list)
+        return f'(and (exists ((k Int)) (and (>= k {start_time}) (<= k {end_time}))) (and {conditions}) {second_condition_code})'
 
 
 def test_stl_to_smtlib():
