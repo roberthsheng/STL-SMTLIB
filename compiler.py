@@ -157,7 +157,7 @@ def translate(node):
         _, left, right = node
         left_code = translate(left)
         right_code = translate(right)
-        return f'(add {left_code} {right_code})'
+        return f'(+ {left_code} {right_code})'
     elif kind == 'GEQ':
         _, left, right = node
         left_code = translate(left)
@@ -185,17 +185,20 @@ def translate(node):
         expr_code = translate(expr)
         return f'(not {expr_code})'
     elif kind == 'UNTIL':
-        _, start_time, end_time, first_condition, second_condition = node
+        start_time, end_time, first_condition, second_condition = node[1:]
         start_time = int(translate(start_time))
         end_time = int(translate(end_time))
         first_condition_code = translate(first_condition)
         second_condition_code = translate(second_condition)
-        condition_list = []
-        for k in range(start_time, end_time+1):
-            for l in range(0, k+1):
-                condition_list.append(f"(= l {l} {first_condition_code})")
-        conditions = " ".join(condition_list)
-        return f'(and (exists ((k Int)) (and (>= k {start_time}) (<= k {end_time}))) (and {conditions}) {second_condition_code})'
+
+        or_expr = []
+        for k in range(start_time, end_time + 1):
+            and_expr = [f'{first_condition_code.replace("x", f"x{l}")}' for l in range(start_time, k)]
+            or_expr.append(f'(and {" ".join(and_expr)} {second_condition_code.replace("x", f"x{k}").replace("y", f"y{k}")})')
+
+        return f'(or {" ".join(or_expr)})'
+
+
 
 
 def test_stl_to_smtlib():
