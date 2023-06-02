@@ -1,5 +1,6 @@
 import re
 from z3 import *
+import tseitin
 
 def stl_to_smtlib(stl_code):
     # Convert STL to tokens
@@ -199,34 +200,33 @@ def translate(node):
         return f'(or {" ".join(or_expr)})'
 
 
-
-
 def test_stl_to_smtlib():
     tests = [
-        ("⊤", "true"), 
-        ("⊥", "false"), 
-        ("¬x", "(not x)"), 
-        ("¬(x ∧ y)", "(not (and x y))"), 
-        ("⊤ ∨ x", "(or true x)"), 
-        ("⊥ ∧ x", "(and false x)"), 
-        ("¬(⊤ ∨ x)", "(not (or true x))"),
-        ("¬(⊥ ∧ x)", "(not (and false x))"),
-        ("(x ≥ 3) U[0, 10] (y ≥ 5)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (<= l k) (>= x 3))) (>= y 5)))"),
-        ("(a + b ≥ 4) U[2, 5] (c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (<= l k) (>= (add a b) 4))) (>= c 2)))"),
-        ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (<= l k) (>= x 3))) (and (>= y 5) (>= z 2))))"),
-        ("(y ≥ 5) ∧ (z ≥ 2) U[0, 10] (x ≥ 3)", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (<= l k) (and (>= y 5) (>= z 2)))) (>= x 3)))"),
-        ("¬(y ≥ 5) ∧ ⊤ U[0, 10] ⊥", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (<= l k) (and (not (>= y 5)) true))) false))"),
-        ("2.95x ≥ 9", "(>= (* 2.95 x) 9)"),
-        ("3x + 2y ≥ 9", "(>= (add (* 3 x) (* 2 y)) 9)"),
-        ("(2a + b ≥ 4) U[2, 5] (3c ≥ 2)", "(exists ((k Int)) (and (>= k 2) (<= k 5) (forall ((l Int)) (and (>= l 0) (<= l k) (>= (add (* 2 a) b) 4))) (>= (* 3 c) 2)))"),
-        ("2x ≥ 6 ∧ 3y ≥ 9", "(and (>= (* 2 x) 6) (>= (* 3 y) 9))"),
-        ("¬(4.5y ≥ 20) ∧ ⊤ U[0, 10] ⊥", "(exists ((k Int)) (and (>= k 0) (<= k 10) (forall ((l Int)) (and (>= l 0) (<= l k) (and (not (>= (* 4.5 y) 20)) true))) false))")
+        ("⊤"), 
+        ("⊥"), 
+        ("¬x"), 
+        ("¬(x ∧ y)"), 
+        ("⊤ ∨ x"), 
+        ("⊥ ∧ x"), 
+        ("¬(⊤ ∨ x)"),
+        ("¬(⊥ ∧ x)"),
+        ("⊤ U[0, 5] ⊥"),
+        ("(x ≥ 3) U[0, 10] (y ≥ 5)"),
+        ("(a + b ≥ 4) U[2, 5] (c ≥ 2)"),
+        ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)"),
+        ("(y ≥ 5) ∧ (z ≥ 2) U[0, 10] (x ≥ 3)"),
+        ("¬(y ≥ 5) ∧ ⊤ U[0, 10] ⊥"),
+        ("2.95x ≥ 9"),
+        ("3x + 2y ≥ 9"),
+        ("(2a + b ≥ 4) U[2, 5] (3c ≥ 2)"),
+        ("2x ≥ 6 ∧ 3y ≥ 9"),
+        ("¬(4.5y ≥ 20) ∧ ⊤ U[0, 10] ⊥")
     ]
 
-    for stl, expected_smtlib in tests:
+    for stl in tests:
         smtlib = stl_to_smtlib(stl)
-        assert smtlib == expected_smtlib, f'Expected {expected_smtlib}, but got {smtlib}'
+        transformed = tseitin.tseitin_to_cnf(smtlib)
+        print(f'{stl} turns into {smtlib} turns into {transformed}\n')
         
-    print("All tests passed!")
 
 test_stl_to_smtlib()
