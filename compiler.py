@@ -145,6 +145,22 @@ def parse(tokens):
     # Start parsing
     return parse_expression()
 
+def replace_vars_with_time(expr, time):
+    ignore_list = ['true', 'false', 'and', 'or', 'not']  # List of terms to ignore
+
+    # Find all words consisting only of alphabetical characters
+    words = re.findall('[a-zA-Z]+', expr)
+
+    for word in words:
+        # Skip if word is in the ignore list
+        if word in ignore_list:
+            continue
+
+        # Replace each occurrence of the word in the expression with the word followed by the time value
+        expr = re.sub(r'\b' + word + r'\b', word + str(time), expr)
+
+    return expr
+
 def translate(node):
     kind = node[0]
     if kind == 'NUMBER':
@@ -194,8 +210,8 @@ def translate(node):
 
         or_expr = []
         for k in range(start_time, end_time + 1):
-            and_expr = [f'{first_condition_code.replace("x", f"x{l}")}' for l in range(start_time, k)]
-            or_expr.append(f'(and {" ".join(and_expr)} {second_condition_code.replace("x", f"x{k}").replace("y", f"y{k}")})')
+            and_expr = [replace_vars_with_time(first_condition_code, l) for l in range(start_time, k)]
+            or_expr.append(f'(and {" ".join(and_expr)} {replace_vars_with_time(second_condition_code, k)})')
 
         return f'(or {" ".join(or_expr)})'
 
