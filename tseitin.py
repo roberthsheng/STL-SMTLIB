@@ -42,11 +42,38 @@ def tseitin_transformation(formula, mapping, counter):
         counter = new_counter
         new_operands.append(new_formula)
     new_formula = f'({operation} {" ".join(new_operands)})'
-    return new_formula, counter
+    if operation not in ['not', 'and', 'or', '>=', '*', '+']:
+        raise ValueError(f'Unexpected operation {operation}')
+    
+    # Introduce new variable for sub-formula
+    counter += 1
+    new_variable = f'p{counter}'
+
+    if operation in ['not', 'and', 'or']:
+        if operation == 'not':
+            mapping['clauses'].append([f'{new_variable}', new_operands[0]])
+            mapping['clauses'].append([f'not {new_variable}', f'not {new_operands[0]}'])
+        else:
+            clause = [f'not {new_variable}'] + new_operands
+            mapping['clauses'].append(clause)
+            for operand in new_operands:
+                mapping['clauses'].append([new_variable, f'not {operand}'])
+    elif operation in ['>=', '*', '+']:
+        # For non-boolean operations, simply map the new_variable directly to the new_formula
+        mapping[new_variable] = new_formula
+
+    return new_variable, counter
 
 def tseitin_to_cnf(formula):
     mapping = {'clauses': []}
     counter = 0
     new_formula, counter = tseitin_transformation(formula, mapping, counter)
     mapping['clauses'].append([new_formula])
+
+    # Add back the non-boolean operations
+    for var, form in mapping.items():
+        if var not in ['clauses', new_formula] and form[0] == '(':
+            mapping['clauses'].append([f'{var}', form])
+            mapping['clauses'].append([f'not {var}', f'not {form}'])
+
     return mapping['clauses']
