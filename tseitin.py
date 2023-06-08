@@ -1,4 +1,5 @@
 import re
+from z3 import *
 
 def decompose(formula):
     operation = None
@@ -33,7 +34,6 @@ def tseitin_transformation(formula, mapping, counter):
         return formula, counter
     if formula[0] != '(':
         # Don't create a new variable if the formula is a literal
-        mapping[formula] = formula
         return formula, counter
     operation, operands = decompose(formula)
     new_operands = []
@@ -42,27 +42,29 @@ def tseitin_transformation(formula, mapping, counter):
         counter = new_counter
         new_operands.append(new_formula)
     new_formula = f'({operation} {" ".join(new_operands)})'
-    if operation not in ['not', 'and', 'or', '>=', '*', '+']:
-        raise ValueError(f'Unexpected operation {operation}')
-    
+
     # Introduce new variable for sub-formula
     counter += 1
     new_variable = f'p{counter}'
+    mapping[new_variable] = new_formula
 
-    if operation in ['not', 'and', 'or']:
-        if operation == 'not':
-            mapping['clauses'].append([f'{new_variable}', new_operands[0]])
-            mapping['clauses'].append([f'not {new_variable}', f'not {new_operands[0]}'])
-        else:
-            clause = [f'not {new_variable}'] + new_operands
-            mapping['clauses'].append(clause)
-            for operand in new_operands:
-                mapping['clauses'].append([new_variable, f'not {operand}'])
-    elif operation in ['>=', '*', '+']:
-        # For non-boolean operations, simply map the new_variable directly to the new_formula
-        mapping[new_variable] = new_formula
+    if operation == 'not':
+        mapping['clauses'].append([new_variable, new_operands[0]])
+        mapping['clauses'].append([f'not {new_variable}', f'not {new_operands[0]}'])
+    elif operation == 'and':
+        clause = [new_variable] + [f'not {operand}' for operand in new_operands]
+        mapping['clauses'].append(clause)
+        for i in range(len(new_operands)):
+            mapping['clauses'].append([f'not {new_variable}', new_operands[i]])
+            mapping['clauses'].append([f'not {new_variable}', f'not {new_operands[i]}', new_variable])
+    elif operation == 'or':
+        mapping['clauses'].append([f'not {new_variable}'] + new_operands)
+        for operand in new_operands:
+            mapping['clauses'].append([new_variable, f'not {operand}'])
 
     return new_variable, counter
+
+
 
 def tseitin_to_cnf(formula):
     mapping = {'clauses': []}
@@ -73,7 +75,56 @@ def tseitin_to_cnf(formula):
     # Add back the non-boolean operations
     for var, form in mapping.items():
         if var not in ['clauses', new_formula] and form[0] == '(':
-            mapping['clauses'].append([f'{var}', form])
+            mapping['clauses'].append([var, form])
             mapping['clauses'].append([f'not {var}', f'not {form}'])
 
     return mapping['clauses']
+
+
+
+def cnf_to_smt(cnf):
+    # create a list to hold disjunctions
+    disjunctions = []
+    for clause in cnf:
+        # wrap each literal in the clause with parentheses
+        clause_strs = ['(' + literal + ')' for literal in clause]
+        # join literals in the clause with 'or', wrap it into parentheses to represent a disjunction
+        disjunction = '(or ' + ' '.join(clause_strs) + ')'
+        disjunctions.append(disjunction)
+    # join all disjunctions with 'and', wrap it into parentheses to represent a conjunction
+    conjunction = '(and ' + ' '.join(disjunctions) + ')'
+    return conjunction
+
+
+def cnf_to_z3(cnf_list):
+    vars = {}
+    z3_vars = {}
+
+    def get_var(lit):
+        nonlocal vars, z3_vars
+        var = lit.replace('not ', '')
+        var = re.sub(r'\(([^)]+)\)', r'\1', var)  # Remove parentheses if present
+        if var not in vars:
+            vars[var] = Bool(var)
+            z3_vars[var] = vars[var]
+        return (Not(z3_vars[var]) if 'not ' in lit else z3_vars[var])
+
+    clauses = []
+    for clause in cnf_list:
+        new_clause = []
+        for lit in clause:
+            if lit == 'true':
+                new_clause.append(True)
+            elif lit == 'false':
+                new_clause.append(False)
+            elif lit.startswith('(and'):
+                lits = lit[lit.index(' ') + 1:-1].split(' ')
+                new_clause.extend([get_var(sublit) for sublit in lits])
+            elif lit.startswith('(or'):
+                lits = lit[lit.index(' ') + 1:-1].split(' ')
+                new_clause.append(Or(*[get_var(sublit) for sublit in lits]))
+            else:
+                new_clause.append(get_var(lit))
+        clauses.append(Or(*new_clause))
+
+    return vars, And(*clauses)
