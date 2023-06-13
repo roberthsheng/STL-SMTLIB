@@ -71,7 +71,7 @@ def tseitin_to_cnf(formula):
             mapping['clauses'].append([var, form])
             mapping['clauses'].append([f'not {var}', f'not {form}'])
 
-    return mapping['clauses']
+    return mapping['clauses'], mapping
 
 
 def cnf_to_z3(cnf_list):
@@ -81,7 +81,6 @@ def cnf_to_z3(cnf_list):
     def get_var(lit):
         nonlocal vars, z3_vars
         var = lit.replace('not ', '')
-        var = re.sub(r'\(([^)]+)\)', r'\1', var)  # Remove parentheses if present
         if var not in vars:
             vars[var] = Bool(var)
             z3_vars[var] = vars[var]
@@ -95,30 +94,43 @@ def cnf_to_z3(cnf_list):
                 new_clause.append(True)
             elif lit == 'false':
                 new_clause.append(False)
-            elif lit.startswith('(and'):
-                lits = lit[lit.index(' ') + 1:-1].split(' ')
-                new_clause.extend([get_var(sublit) for sublit in lits if sublit != 'false'])
-                for i in range(len(lits) - 1):
-                    for j in range(i + 1, len(lits)):
-                        clauses.append(Or(Not(get_var(lits[i])), Not(get_var(lits[j]))))
-                    clauses.append(Or(Not(get_var(lits[i])), get_var(lits[i + 1])))
-            elif lit.startswith('(or'):
-                lits = lit[lit.index(' ') + 1:-1].split(' ')
-                new_clause.append(Or(*[get_var(sublit) for sublit in lits]))
+            elif isinstance(lit, list):  # Treat list as a conjunction
+                subclause = []
+                for sublit in lit:
+                    subclause.append(get_var(sublit))
+                new_clause.append(And(*subclause))
             else:
                 new_clause.append(get_var(lit))
         clauses.append(Or(*new_clause))
 
     return vars, And(*clauses)
 
-def evaluate(transformed):
+
+def interpret_model(model, mapping):
+    interpretation = {}
+    for variable in model:
+        if variable in mapping:
+            p_variable = mapping[variable]
+            value = model[variable]
+            interpretation[p_variable] = {
+                'value': value,
+                'original_variable': variable
+            }
+    return interpretation
+
+
+def evaluate(transformed, mapping):
     vars, clauses = cnf_to_z3(transformed)
     solver = Solver()
     solver.add(clauses)
 
     if solver.check() == sat:
         model = solver.model()
-        assignment = {str(var): model[var] for var in vars.values()}
-        print(assignment)
+        assignment = {str(var): model.evaluate(var) for var in vars.values()}
+        print("Tseitin assignment: ", assignment)
+
+        # interpret the assignment
+        interpretation = interpret_model(assignment, mapping)
+        print("Interpretation: ", interpretation)
     else:
         print("UNSAT")
