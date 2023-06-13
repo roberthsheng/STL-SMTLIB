@@ -233,7 +233,7 @@ def test_stl_to_smtlib():
         # ("⊤ U[0, 5] ⊥"),
         ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5)"),
-        # ("(a + b ≥ 4) U[2, 5] (c ≥ 2)"),
+        ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)"),
         # ("(y ≥ 5) ∧ (z ≥ 2) U[0, 10] (x ≥ 3)"),
         # ("¬(y ≥ 5) ∧ ⊤ U[0, 10] ⊥"),
@@ -246,34 +246,14 @@ def test_stl_to_smtlib():
 
     for stl in tests:
         smtlib = stl_to_smtlib(stl)
-        transformed = tseitin.tseitin_to_cnf(smtlib)
-        # print(f'{smtlib} turns into {transformed}\n')
-
-
-
-
         print(stl)
         print(smtlib)
+        transformed = tseitin.tseitin_to_cnf(smtlib)
+        # print(f'{smtlib} turns into {transformed}\n')
+        
         print(transformed)
-        vars, clauses = tseitin.cnf_to_z3(transformed)
-        solver = Solver()
-        solver.add(clauses)
-
-        if solver.check() == sat:
-            model = solver.model()
-            assignment = {str(var): (model[var] if 'not ' not in str(var) else not model[var]) for var in vars.values()}
-            print(assignment)
-        else:
-            print("UNSAT")
+        tseitin.evaluate(transformed)
 
         print()
-
-
-
-
-
-        # forz3 = tseitin.cnf_to_smt(transformed)
-        # print(forz3)
-        # print()
 
 test_stl_to_smtlib()
