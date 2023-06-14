@@ -228,12 +228,13 @@ def test_stl_to_smtlib():
         # ("¬(x ∧ y)"), 
         # ("⊤ ∨ x"), 
         # ("⊥ ∧ x"), 
+        # ("⊥ ∧ ⊥"), 
         # ("¬(⊤ ∨ x)"),
         # ("¬(⊥ ∧ x)"),
         # ("⊤ U[0, 5] ⊥"),
-        ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
+        # ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5)"),
-        ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
+        # ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)"),
         # ("(y ≥ 5) ∧ (z ≥ 2) U[0, 10] (x ≥ 3)"),
         # ("¬(y ≥ 5) ∧ ⊤ U[0, 10] ⊥"),
@@ -241,13 +242,13 @@ def test_stl_to_smtlib():
         # ("3x + 2y ≥ 9"),
         # ("(2a + b ≥ 4) U[2, 5] (3c ≥ 2)"),
         # ("2x ≥ 6 ∧ 3y ≥ 9"),
-        # ("¬(4.5y ≥ 20) ∧ ⊤ U[0, 10] ⊥")
+        # ("¬(4.5y ≥ 20) ∧ ⊤ U[0, 10] ⊥"),
+        ("1 ≥ 2")
     ]
 
     for stl in tests:
         smtlib = stl_to_smtlib(stl)
         print(stl)
-        # smtlib = smtlib.replace('(and  (>= z1 2))', '').replace('(and  (>= c2 2))', '')
         print(smtlib)
         transformed, mapping = tseitin.tseitin_to_cnf(smtlib)
         # print(f'{smtlib} turns into {transformed}\n')

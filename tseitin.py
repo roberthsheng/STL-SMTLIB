@@ -132,5 +132,8 @@ def evaluate(transformed, mapping):
         # interpret the assignment
         interpretation = interpret_model(assignment, mapping)
         print("Interpretation: ", interpretation)
+
+        return True
     else:
         print("UNSAT")
+        return False
