@@ -137,3 +137,9 @@ def evaluate(transformed, mapping):
     else:
         print("UNSAT")
         return False
+
+def cnf_to_smt(cnf_list):
+    smt_list = []
+    for clause in cnf_list:
+        smt_list.append(f'(or {" ".join("(" + lit + ")" if "not" in lit else lit for lit in clause)})')
+    return f'(and {" ".join(smt_list)})'
