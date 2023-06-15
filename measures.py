@@ -1,8 +1,6 @@
 import re
 
-# def ground_truth():
-
-def is_possible(epsilon, deltas, signals, times):
+def is_possible(epsilon, deltas, signals, times, measurements):
     # assume epsilons[signal] is bound for signal
     # assume deltas[signal][time] is bound for signal at time
     clauses = []
@@ -18,13 +16,20 @@ def is_possible(epsilon, deltas, signals, times):
 def declare_helpers(formula):
     clauses = []
     # turn all instances of "pi" in formula into declared Bools, where i is a natural number
-    pattern = r'pi\d+'
-    matches = re.findall(pattern, formula)
-    matches = list(set(matches))
-    for pi in matches:
+    helperPattern = r'pi\d+'
+    varPattern = r'(?![p])[a-z]\d+'
+
+    for pi in list(set(re.findall(helperPattern, formula))):
         clauses.append('(declare-const ' + pi + ' Bool)')
+    
+    for xi in list(set(re.findall(varPattern, formula))):
+        clauses.append('(declare-const ' + xi + ' Real)')
+        # Do we need to create bounds for xi? If so, #HACK
+        # clauses.append('(assert (and (<= (- 9999999999999) ' + xi + ') (<= ' + xi + ' 9999999999999)))')
 
     # assumes original variables have already been declared
     clauses.append('(assert ' + formula + ')')
     return clauses
 
+# TODO: define way to pass in measurements
+# def measured(?):
