@@ -1,4 +1,6 @@
 import re
+import csv
+import pandas
 
 def is_possible(epsilon, deltas, signals, times, measurements):
     # assume epsilons[signal] is bound for signal
@@ -10,6 +12,12 @@ def is_possible(epsilon, deltas, signals, times, measurements):
         for time in times:
             clauses.append('(declare-const e' + str(signal) + str(time) + ' Real)')
             clauses.append('(assert (and (<= (- ' + str(deltas[signal][time]) + ') xe' + str(signal) + str(time) + ') (<= e' + str(signal) + str(time) + ' ' + str(deltas[signal][time]) + ')))')
+
+    # for measure in measurements declare and assert
+
+    # relations between measurements and states
+    for measure in measurements:
+        clauses.append('(assert (= (+ ' + str(measure)[1:] + ' o' + str(measure)[1] + ' e' + str(measure)[1:] + ') ' + str(measure) + '))')
 
     return clauses
 
@@ -32,4 +40,6 @@ def declare_helpers(formula):
     return clauses
 
 # TODO: define way to pass in measurements
-# def measured(?):
+def measured(timeseries_csv):
+    # csv with columns: signal, time, epsilon, delta, measurement
+    pandas.read_csv(timeseries_csv)
