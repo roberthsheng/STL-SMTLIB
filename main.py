@@ -29,9 +29,13 @@ tests = [
 
 
 for stl in tests:
+    print(stl)
     smtlib = compiler.stl_to_smtlib(stl)
-    transformed, _ = tseitin.tseitin_to_cnf(smtlib)
+    transformed, mapping = tseitin.tseitin_to_cnf(smtlib)
     formula = tseitin.cnf_to_smt(transformed)
+    print(formula)
+    # print(tseitin.cnf_to_z3(transformed))
+    # tseitin.evaluate(transformed, mapping)
 
     measures.all_clauses(formula)
 

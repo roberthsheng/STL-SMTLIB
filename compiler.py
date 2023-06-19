@@ -232,7 +232,8 @@ def test_stl_to_smtlib():
         # ("¬(⊤ ∨ x)"),
         # ("¬(⊥ ∧ x)"),
         # ("⊤ U[0, 5] ⊥"),
-        ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
+        # ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
+        # ("(x ≥ 3) U[1, 2] (z ≥ 2)"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5)"),
         # ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)"),
@@ -260,4 +261,4 @@ def test_stl_to_smtlib():
 
         print()
 
-# test_stl_to_smtlib()
+test_stl_to_smtlib()

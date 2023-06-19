@@ -27,6 +27,8 @@ def decompose(formula):
                 operand = ""
         elif depth > 0:
             operand += char
+    if operand:
+        operands.append(operand)
     return operation, operands
 
 def tseitin_transformation(formula, mapping, counter):
@@ -45,16 +47,19 @@ def tseitin_transformation(formula, mapping, counter):
     new_variable = f'p{counter}'
     mapping[new_variable] = new_formula
 
+    # not A turns into (A or p) and (not A or not p)
     if operation == 'not':
         mapping['clauses'].append([new_variable, new_operands[0]])
         mapping['clauses'].append([f'not {new_variable}', f'not {new_operands[0]}'])
+    # A and B turns into (not A or not B or p) and (A or not p) and (B or not p)
     elif operation == 'and':
         for operand in new_operands:
             mapping['clauses'].append([f'not {new_variable}', operand])
         mapping['clauses'].append([new_variable] + [f'not {operand}' for operand in new_operands])
+    # A or B turns into (not A or p) and (not B or p) and (A or B or not p)
     elif operation == 'or':
         for operand in new_operands:
-            mapping['clauses'].append([new_variable, f'not {operand}'])
+            mapping['clauses'].append([f'not {operand}', new_variable])
         mapping['clauses'].append([f'not {new_variable}'] + new_operands)
 
     return new_variable, counter
@@ -65,11 +70,11 @@ def tseitin_to_cnf(formula):
     new_formula, counter = tseitin_transformation(formula, mapping, counter)
     mapping['clauses'].append([new_formula])
 
-    # Add back the non-boolean operations
-    for var, form in mapping.items():
-        if var not in ['clauses', new_formula] and form[0] == '(':
-            mapping['clauses'].append([var, form])
-            mapping['clauses'].append([f'not {var}', f'not {form}'])
+    # add back the non-boolean operations
+    for variable, subformula in mapping.items():
+        if variable not in ['clauses', new_formula]:
+            mapping['clauses'].append([f'not {variable}', subformula])
+            mapping['clauses'].append([variable, f'not {subformula}'])
 
     return mapping['clauses'], mapping
 
@@ -141,5 +146,12 @@ def evaluate(transformed, mapping):
 def cnf_to_smt(cnf_list):
     smt_list = []
     for clause in cnf_list:
-        smt_list.append(f'(or {" ".join("(" + lit + ")" if "not" in lit else lit for lit in clause)})')
+        smt_clause = []
+        for lit in clause:
+            if "not" in lit:
+                lit = lit.replace("not ", "") # Remove 'not' from literal
+                smt_clause.append(f'(not {lit})') # Apply 'not' as per SMT-lib syntax
+            else:
+                smt_clause.append(lit)
+        smt_list.append(f'(or {" ".join(smt_clause)})')
     return f'(and {" ".join(smt_list)})'
