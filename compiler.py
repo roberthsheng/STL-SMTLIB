@@ -260,4 +260,4 @@ def test_stl_to_smtlib():
 
         print()
 
-test_stl_to_smtlib()
+# test_stl_to_smtlib()

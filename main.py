@@ -1,4 +1,4 @@
-import compiler, trajectory, measures, tseitin
+import compiler, measures, tseitin, z3
 
 tests = [
     # ("⊤"), 
@@ -27,14 +27,21 @@ tests = [
     # ("1 ≥ 2")
 ]
 
-def main():
-    for stl in tests:
-        smtlib = compiler.stl_to_smtlib(stl)
-        print(stl)
-        print(smtlib)
-        transformed, mapping = tseitin.tseitin_to_cnf(smtlib)
-        formula = tseitin.cnf_to_smt(transformed)
 
-        
+for stl in tests:
+    smtlib = compiler.stl_to_smtlib(stl)
+    transformed, _ = tseitin.tseitin_to_cnf(smtlib)
+    formula = tseitin.cnf_to_smt(transformed)
 
-        print()
+    measures.all_clauses(formula)
+
+    # use z3 to check satisfiability
+    s = z3.Solver()
+    # formula is in clauses.smt2
+    s.from_file('smt/clauses.smt2')
+    print(s.check())
+    if s.check() == z3.sat:
+        print(s.model())
+
+
+    print()
