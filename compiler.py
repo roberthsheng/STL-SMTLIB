@@ -254,6 +254,8 @@ def test_stl_to_smtlib():
         # print(f'{smtlib} turns into {transformed}\n')
         
         print(transformed)
+        
+        print(tseitin.cnf_to_smt(transformed))
         tseitin.evaluate(transformed, mapping)
 
         print()
