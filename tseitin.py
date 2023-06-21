@@ -34,7 +34,7 @@ def decompose(formula):
 def tseitin_transformation(formula, mapping, counter):
     if formula in ['true', 'false', '⊤', '⊥']:
         return formula, counter
-    if re.match(r'\(>= \(\+[^\)]*\) \d+\)', formula):
+    if re.match(r'\(>= \(\+[^\)]*\) [a-z0-9_]+\)', formula):
         return formula, counter
     if formula[0] != '(':
         return formula, counter

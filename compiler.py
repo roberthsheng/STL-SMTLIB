@@ -1,8 +1,6 @@
 import re
 from z3 import *
 import tseitin
-from z3 import Solver, parse_smt2_string
-import pycosat
 
 def stl_to_smtlib(stl_code):
     # Convert STL to tokens
@@ -212,7 +210,7 @@ def translate(node):
 
         or_expr = []
         for k in range(start_time, end_time + 1):
-            and_expr = [replace_vars_with_time(first_condition_code, l) for l in range(start_time, k)]
+            and_expr = [replace_vars_with_time(first_condition_code, l) for l in range(0, k)]
             or_expr.append(f'(and {" ".join(and_expr)} {replace_vars_with_time(second_condition_code, k)})')
 
         return f'(or {" ".join(or_expr)})'
@@ -233,7 +231,8 @@ def test_stl_to_smtlib():
         # ("¬(⊥ ∧ x)"),
         # ("⊤ U[0, 5] ⊥"),
         # ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
-        # ("(x ≥ 3) U[1, 2] (z ≥ 2)"),
+        # ("((x ≥ 3) U[1, 2] (z ≥ 2)) U[3, 5] (y ≥ 5)"),
+        ("(a U[1, 2] b) U[3, 5] c"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5)"),
         # ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)"),
@@ -251,13 +250,13 @@ def test_stl_to_smtlib():
         smtlib = stl_to_smtlib(stl)
         print(stl)
         print(smtlib)
-        transformed, mapping = tseitin.tseitin_to_cnf(smtlib)
-        # print(f'{smtlib} turns into {transformed}\n')
+        # transformed, mapping = tseitin.tseitin_to_cnf(smtlib)
+        # # print(f'{smtlib} turns into {transformed}\n')
         
-        print(transformed)
+        # print(transformed)
         
-        print(tseitin.cnf_to_smt(transformed))
-        tseitin.evaluate(transformed, mapping)
+        # print(tseitin.cnf_to_smt(transformed))
+        # tseitin.evaluate(transformed, mapping)
 
         print()
 
