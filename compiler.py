@@ -176,24 +176,24 @@ def replace_vars_with_time(expr, time):
 
     return expr
 
-def translate(node):
+def translate(node, base_time=0):
     kind = node[0]
     if kind == 'NUMBER':
         return str(node[1])
     elif kind == 'VAR':
-        return node[1]
+        return node[1] + str(base_time)
     elif kind == 'COEFF':
         coeff, var = node[1]
-        return f'(* {coeff} {var})'
+        return f'(* {coeff} {var}{base_time})'
     elif kind == 'PLUS':
         _, left, right = node
-        left_code = translate(left)
-        right_code = translate(right)
+        left_code = translate(left, base_time)
+        right_code = translate(right, base_time)
         return f'(+ {left_code} {right_code})'
     elif kind == 'GEQ':
         _, left, right = node
-        left_code = translate(left)
-        right_code = translate(right)
+        left_code = translate(left, base_time)
+        right_code = translate(right, base_time)
         return f'(>= {left_code} {right_code})'
     elif kind == 'BOOL_OP':
         if node[1] == '⊤':
@@ -201,8 +201,8 @@ def translate(node):
         elif node[1] == '⊥':
             return 'false'
         op, left, right = node[1:]
-        left_code = translate(left)
-        right_code = translate(right)
+        left_code = translate(left, base_time)
+        right_code = translate(right, base_time)
         if op == '∨':
             op = 'or'
         elif op == '∧':
@@ -214,19 +214,17 @@ def translate(node):
         return f'({op} {left_code} {right_code})'
     elif kind == 'NOT':
         _, expr = node
-        expr_code = translate(expr)
+        expr_code = translate(expr, base_time)
         return f'(not {expr_code})'
     elif kind == 'UNTIL':
-        start_time, end_time, first_condition, second_condition = node[1:]
-        start_time = int(translate(start_time))
-        end_time = int(translate(end_time))
-        first_condition_code = translate(first_condition)
-        second_condition_code = translate(second_condition)
-
+        _, start_time, end_time, first_condition, second_condition = node
+        start_time = int(translate(start_time, base_time))
+        end_time = int(translate(end_time, base_time))
+        
         or_expr = []
         for k in range(start_time, end_time + 1):
-            and_expr = [replace_vars_with_time(first_condition_code, l) for l in range(0, k)]
-            or_expr.append(f'(and {" ".join(and_expr)} {replace_vars_with_time(second_condition_code, k)})')
+            and_expr = [translate(first_condition, base_time+l) for l in range(0, k)]
+            or_expr.append(f'(and {" ".join(and_expr)} {translate(second_condition, base_time+k)})')
 
         return f'(or {" ".join(or_expr)})'
 
@@ -246,8 +244,8 @@ def test_stl_to_smtlib():
         # ("¬(⊥ ∧ x)"),
         # ("⊤ U[0, 5] ⊥"),
         # ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
-        # ("((x ≥ 3) U[1, 2] (z ≥ 2)) U[3, 5] (y ≥ 5)"),
-        ("(a U[1, 2] b) U[3, 5] c"),
+        ("((x ≥ 3) U[1, 2] (z ≥ 2)) U[3, 5] (y ≥ 5)"),
+        # ("(a U[1, 2] b) U[3, 5] c"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5)"),
         # ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
         # ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)"),
