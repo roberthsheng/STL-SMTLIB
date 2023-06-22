@@ -150,6 +150,8 @@ def replace_vars_with_time(expr, time):
 
     # Find all words consisting only of alphabetical characters
     words = re.findall('[a-zA-Z]+', expr)
+    # Find all words consisting of alphabetical characters followed by a number
+    words_with_time = re.findall('[a-zA-Z]+\d+', expr)
 
     for word in words:
         # Skip if word is in the ignore list
@@ -158,6 +160,19 @@ def replace_vars_with_time(expr, time):
 
         # Replace each occurrence of the word in the expression with the word followed by the time value
         expr = re.sub(r'\b' + word + r'\b', word + str(time), expr)
+    
+    for word in words_with_time:
+        # Skip if word is in the ignore list
+        if word in ignore_list:
+            continue
+
+        # Replace each occurrence of the word in the expression with the word followed by the new time value, which is the number after the word plus the passed time
+        # get old time by stripping word of alphabetical characters
+        old_time = int(re.sub('[a-zA-Z]+', '', word))
+        # get new time by adding old time to passed time
+        new_time = old_time + time
+        # replace word with new word
+        expr = re.sub(r'\b' + word + r'\b', word[:-len(str(old_time))] + str(new_time), expr)
 
     return expr
 
