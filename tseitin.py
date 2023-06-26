@@ -66,20 +66,28 @@ def tseitin_transformation(formula, mapping, counter):
 
     return new_variable, counter
 
-def tseitin_to_cnf(formula):
+def tseitin_to_smt(formula):
+    # Perform Tseitin transformation
     mapping = {'clauses': []}
     counter = 0
     new_formula, counter = tseitin_transformation(formula, mapping, counter)
     mapping['clauses'].append([new_formula])
 
-    # add back the non-boolean operations
-    for variable, subformula in mapping.items():
-        if variable not in ['clauses', new_formula]:
-            mapping['clauses'].append([f'not {variable}', subformula])
-            mapping['clauses'].append([variable, f'not {subformula}'])
+    # Translate CNF to SMT-LIB syntax
+    smt_list = []
+    for clause in mapping['clauses']:
+        smt_clause = []
+        for lit in clause:
+            if "not" in lit:
+                smt_clause.append(f'(not {lit.replace("not ", "")})')
+            else:
+                smt_clause.append(lit)
+        smt_list.append(f'(or {" ".join(smt_clause)})')
+    
+    smt_list.append(formula)
 
-    return mapping['clauses'], mapping
-
+    # Return SMT-LIB representation
+    return f'(and {" ".join(smt_list)})'
 
 def cnf_to_z3(cnf_list):
     vars = {}
@@ -145,15 +153,31 @@ def evaluate(transformed, mapping):
         print("UNSAT")
         return False
 
-def cnf_to_smt(cnf_list):
-    smt_list = []
-    for clause in cnf_list:
-        smt_clause = []
-        for lit in clause:
-            if "not" in lit:
-                lit = lit.replace("not ", "") # Remove 'not' from literal
-                smt_clause.append(f'(not {lit})') # Apply 'not' as per SMT-lib syntax
-            else:
-                smt_clause.append(lit)
-        smt_list.append(f'(or {" ".join(smt_clause)})')
-    return f'(and {" ".join(smt_list)})'
+
+# def tseitin_to_cnf(formula):
+#     mapping = {'clauses': []}
+#     counter = 0
+#     new_formula, counter = tseitin_transformation(formula, mapping, counter)
+#     mapping['clauses'].append([new_formula])
+
+#     # add back the non-boolean operations
+#     for variable, subformula in mapping.items():
+#         if variable in ['clauses']:
+#             continue
+#         mapping['clauses'].append([f'not {variable}', subformula])
+#         mapping['clauses'].append([variable, f'not {subformula}'])
+
+#     return mapping['clauses'], mapping
+
+# def cnf_to_smt(cnf_list):
+#     smt_list = []
+#     for clause in cnf_list:
+#         smt_clause = []
+#         for lit in clause:
+#             if "not" in lit:
+#                 lit = lit.replace("not ", "") # Remove 'not' from literal
+#                 smt_clause.append(f'(not {lit})') # Apply 'not' as per SMT-lib syntax
+#             else:
+#                 smt_clause.append(lit)
+#         smt_list.append(f'(or {" ".join(smt_clause)})')
+#     return f'(and {" ".join(smt_list)})'

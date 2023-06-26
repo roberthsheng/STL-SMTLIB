@@ -33,13 +33,12 @@ def declare_helpers(formula):
     clauses.append('(assert ' + formula + ')')
     return clauses
 
-# TODO: define way to pass in measurements
 def measured(timeseries_csv):
     # csv with columns: signal, time, epsilon, delta, measurement
     df = pandas.read_csv(timeseries_csv)
-    # assert that epsilon is the same for all instances of a signal
-    if len(set(df['epsilon'])) != 1:
-        raise ValueError('Epsilon must be the same for all instances of a signal')
+    # # assert that epsilon is the same for all instances of a signal
+    # if len(set(df['epsilon'])) != 1:
+    #     raise ValueError('Epsilon must be the same for all instances of a signal')
     # map signal to epsilon
     epsilon = {signal: df['epsilon'][0] for signal in set(df['signal'])}
     # map signal to time to delta so that deltas[signal][time] = delta
@@ -53,7 +52,7 @@ def measured(timeseries_csv):
 
     return epsilon, deltas, set(df['signal']), set(df['time']), measurements
 
-def all_clauses(formula):
+def all_clauses(formula, file):
     epsilon, deltas, signals, times, measurements = measured('data/timeseries.csv')
     clauses = []
     clauses.append('(set-logic QF_LRA)')
@@ -63,6 +62,6 @@ def all_clauses(formula):
     clauses.append('(check-sat)')
 
     # create file with clauses
-    with open('smt/clauses.smt2', 'w') as f:
+    with open(file, 'w') as f:
         for clause in clauses:
             f.write(clause + '\n')

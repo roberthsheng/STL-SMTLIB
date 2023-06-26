@@ -14,6 +14,9 @@ tests = [
     # ("¬(⊥ ∧ x)"),
     # ("⊤ U[0, 5] ⊥"),
     # ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
+    # ("((x ≥ 3) U[1, 2] (z ≥ 2)) U[3, 5] (y ≥ 5)"),
+    # ("(x ≥ 3) U[3, 5] ((z ≥ 2) U[1, 2] (y ≥ 5))"),
+    # ("(a U[1, 2] b) U[3, 5] c"),
     # ("(x ≥ 3) U[0, 10] (y ≥ 5)"),
     ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
     # ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)"),
@@ -31,21 +34,39 @@ tests = [
 for stl in tests:
     print(stl)
     smtlib = compiler.stl_to_smtlib(stl)
-    transformed, mapping = tseitin.tseitin_to_cnf(smtlib)
-    formula = tseitin.cnf_to_smt(transformed)
-    print(formula)
+    formula = tseitin.tseitin_to_smt(smtlib)
+    # print(formula)
     # print(tseitin.cnf_to_z3(transformed))
     # tseitin.evaluate(transformed, mapping)
 
-    measures.all_clauses(formula)
+    measures.all_clauses(formula, 'smt/clauses.smt2')
 
     # use z3 to check satisfiability
-    s = z3.Solver()
+    s1 = z3.Solver()
     # formula is in clauses.smt2
-    s.from_file('smt/clauses.smt2')
-    print(s.check())
-    if s.check() == z3.sat:
-        print(s.model())
+    s1.from_file('smt/clauses.smt2')
+    print('s1', formula)
+    print(s1.check())
+    if s1.check() == z3.sat:
+        print(s1.model())
+    
+    print()
+    not_formula = tseitin.tseitin_to_smt('(not ' + smtlib + ')')
+    measures.all_clauses(not_formula, 'smt/not_clauses.smt2')
+    print('s2', not_formula)
+    s2 = z3.Solver()
+    s2.from_file('smt/not_clauses.smt2')
+    print(s2.check())
+    if s2.check() == z3.sat:
+        print(s2.model())
 
+
+
+    # if s1.check() == z3.sat and s2.check() == z3.sat:
+    #     print("inconclusive")
+    # elif s2.check() == z3.unsat:
+    #     print("True")
+    # elif s1.check() == z3.unsat:
+    #     print("False")
 
     print()
