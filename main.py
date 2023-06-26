@@ -15,10 +15,10 @@ tests = [
     # ("⊤ U[0, 5] ⊥"),
     # ("(x ≥ 3) U[1, 3] (z ≥ 2)"),
     # ("((x ≥ 3) U[1, 2] (z ≥ 2)) U[3, 5] (y ≥ 5)"),
-    # ("(x ≥ 3) U[3, 5] ((z ≥ 2) U[1, 2] (y ≥ 5))"),
+    ("(x ≥ 3) U[3, 5] ((z ≥ 2) U[1, 2] (y ≥ 5))"),
     # ("(a U[1, 2] b) U[3, 5] c"),
     # ("(x ≥ 3) U[0, 10] (y ≥ 5)"),
-    ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
+    # ("(a + b ≥ 4) U[2, 4] (c ≥ 2)"),
     # ("(x ≥ 3) U[0, 10] (y ≥ 5) ∧ (z ≥ 2)"),
     # ("(y ≥ 5) ∧ (z ≥ 2) U[0, 10] (x ≥ 3)"),
     # ("¬(y ≥ 5) ∧ ⊤ U[0, 10] ⊥"),
@@ -34,6 +34,7 @@ tests = [
 for stl in tests:
     print(stl)
     smtlib = compiler.stl_to_smtlib(stl)
+    print(smtlib)
     formula = tseitin.tseitin_to_smt(smtlib)
     # print(formula)
     # print(tseitin.cnf_to_z3(transformed))
@@ -60,13 +61,11 @@ for stl in tests:
     if s2.check() == z3.sat:
         print(s2.model())
 
-
-
-    # if s1.check() == z3.sat and s2.check() == z3.sat:
-    #     print("inconclusive")
-    # elif s2.check() == z3.unsat:
-    #     print("True")
-    # elif s1.check() == z3.unsat:
-    #     print("False")
+    if s1.check() == z3.sat and s2.check() == z3.sat:
+        print("inconclusive")
+    elif s2.check() == z3.unsat:
+        print("True")
+    elif s1.check() == z3.unsat:
+        print("False")
 
     print()
