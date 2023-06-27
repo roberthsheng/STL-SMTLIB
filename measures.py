@@ -10,9 +10,6 @@ def is_possible(epsilon, deltas, signals, times, measurements):
         clauses.append('(assert (and (<= (- ' + str(epsilon[signal]) + ') o' + str(signal) + ') (<= o' + str(signal) + ' ' + str(epsilon[signal]) + ')))')
         for time in times:
             clauses.append('(declare-const ' + str(signal) + str(time) + ' Real)')
-            # Do we need to create bounds for xi? If so, #HACK
-            # clauses.append('(assert (and (<= (- 9999999999999) ' + str(signal) + str(time) + ') (<= ' + str(signal) + str(time) + ' 9999999999999)))')
-
             clauses.append('(declare-const e' + str(signal) + str(time) + ' Real)')
             clauses.append('(assert (and (<= (- ' + str(deltas[signal][time]) + ') e' + str(signal) + str(time) + ') (<= e' + str(signal) + str(time) + ' ' + str(deltas[signal][time]) + ')))')
             clauses.append('(declare-const m' + str(signal) + str(time) + ' Real)')
