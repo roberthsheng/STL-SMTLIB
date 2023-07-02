@@ -89,95 +89,65 @@ def tseitin_to_smt(formula):
     # Return SMT-LIB representation
     return f'(and {" ".join(smt_list)})'
 
-def cnf_to_z3(cnf_list):
-    vars = {}
-    z3_vars = {}
+# def cnf_to_z3(cnf_list):
+#     vars = {}
+#     z3_vars = {}
 
-    def get_var(lit):
-        nonlocal vars, z3_vars
-        var = lit.replace('not ', '')
-        if var not in vars:
-            vars[var] = Bool(var)
-            z3_vars[var] = vars[var]
-        return (Not(z3_vars[var]) if 'not ' in lit else z3_vars[var])
+#     def get_var(lit):
+#         nonlocal vars, z3_vars
+#         var = lit.replace('not ', '')
+#         if var not in vars:
+#             vars[var] = Bool(var)
+#             z3_vars[var] = vars[var]
+#         return (Not(z3_vars[var]) if 'not ' in lit else z3_vars[var])
 
-    clauses = []
-    for clause in cnf_list:
-        new_clause = []
-        for lit in clause:
-            if lit == 'true':
-                new_clause.append(True)
-            elif lit == 'false':
-                new_clause.append(False)
-            elif isinstance(lit, list):  # Treat list as a conjunction
-                subclause = []
-                for sublit in lit:
-                    subclause.append(get_var(sublit))
-                new_clause.append(And(*subclause))
-            else:
-                new_clause.append(get_var(lit))
-        clauses.append(Or(*new_clause))
-
-    return vars, And(*clauses)
-
-
-def interpret_model(model, mapping):
-    interpretation = {}
-    for variable in model:
-        if variable in mapping:
-            p_variable = mapping[variable]
-            value = model[variable]
-            interpretation[p_variable] = {
-                'value': value,
-                'original_variable': variable
-            }
-    return interpretation
-
-
-def evaluate(transformed, mapping):
-    vars, clauses = cnf_to_z3(transformed)
-    solver = Solver()
-    solver.add(clauses)
-
-    if solver.check() == sat:
-        model = solver.model()
-        assignment = {str(var): model.evaluate(var) for var in vars.values()}
-        print("Tseitin assignment: ", assignment)
-
-        # interpret the assignment
-        interpretation = interpret_model(assignment, mapping)
-        print("Interpretation: ", interpretation)
-
-        return True
-    else:
-        print("UNSAT")
-        return False
-
-
-# def tseitin_to_cnf(formula):
-#     mapping = {'clauses': []}
-#     counter = 0
-#     new_formula, counter = tseitin_transformation(formula, mapping, counter)
-#     mapping['clauses'].append([new_formula])
-
-#     # add back the non-boolean operations
-#     for variable, subformula in mapping.items():
-#         if variable in ['clauses']:
-#             continue
-#         mapping['clauses'].append([f'not {variable}', subformula])
-#         mapping['clauses'].append([variable, f'not {subformula}'])
-
-#     return mapping['clauses'], mapping
-
-# def cnf_to_smt(cnf_list):
-#     smt_list = []
+#     clauses = []
 #     for clause in cnf_list:
-#         smt_clause = []
+#         new_clause = []
 #         for lit in clause:
-#             if "not" in lit:
-#                 lit = lit.replace("not ", "") # Remove 'not' from literal
-#                 smt_clause.append(f'(not {lit})') # Apply 'not' as per SMT-lib syntax
+#             if lit == 'true':
+#                 new_clause.append(True)
+#             elif lit == 'false':
+#                 new_clause.append(False)
+#             elif isinstance(lit, list):  # Treat list as a conjunction
+#                 subclause = []
+#                 for sublit in lit:
+#                     subclause.append(get_var(sublit))
+#                 new_clause.append(And(*subclause))
 #             else:
-#                 smt_clause.append(lit)
-#         smt_list.append(f'(or {" ".join(smt_clause)})')
-#     return f'(and {" ".join(smt_list)})'
+#                 new_clause.append(get_var(lit))
+#         clauses.append(Or(*new_clause))
+
+#     return vars, And(*clauses)
+
+# def interpret_model(model, mapping):
+#     interpretation = {}
+#     for variable in model:
+#         if variable in mapping:
+#             p_variable = mapping[variable]
+#             value = model[variable]
+#             interpretation[p_variable] = {
+#                 'value': value,
+#                 'original_variable': variable
+#             }
+#     return interpretation
+
+
+# def evaluate(transformed, mapping):
+#     vars, clauses = cnf_to_z3(transformed)
+#     solver = Solver()
+#     solver.add(clauses)
+
+#     if solver.check() == sat:
+#         model = solver.model()
+#         assignment = {str(var): model.evaluate(var) for var in vars.values()}
+#         print("Tseitin assignment: ", assignment)
+
+#         # interpret the assignment
+#         interpretation = interpret_model(assignment, mapping)
+#         print("Interpretation: ", interpretation)
+
+#         return True
+#     else:
+#         print("UNSAT")
+#         return False
