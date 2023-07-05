@@ -35,8 +35,9 @@ for stl in tests:
     print(stl)
     smtlib = compiler.stl_to_smtlib(stl)
     print(smtlib)
-    formula = tseitin.tseitin_to_smt(smtlib)
-
+    phi, base = tseitin.tseitin_to_smt(smtlib)
+    formula = f'(and {base} {phi})'
+    not_formula = f'(and {base} (not {phi}))'
     measures.all_clauses(formula, 'smt/clauses.smt2')
 
     # use z3 to check satisfiability
@@ -49,11 +50,10 @@ for stl in tests:
         print(s1.model())
     
     print()
-    not_formula = tseitin.tseitin_to_smt('(not ' + smtlib + ')')
     measures.all_clauses(not_formula, 'smt/not_clauses.smt2')
-    print('s2', not_formula)
     s2 = z3.Solver()
     s2.from_file('smt/not_clauses.smt2')
+    print('s2', not_formula)
     print(s2.check())
     if s2.check() == z3.sat:
         print(s2.model())

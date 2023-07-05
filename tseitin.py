@@ -49,19 +49,19 @@ def tseitin_transformation(formula, mapping, counter):
     new_variable = f'p{counter}'
     mapping[new_variable] = new_formula
 
-    # not A turns into (A or p) and (not A or not p)
+    # p = not A turns into (p or A) and (not p or not A)
     if operation == 'not':
         mapping['clauses'].append([new_variable, new_operands[0]])
         mapping['clauses'].append([f'not {new_variable}', f'not {new_operands[0]}'])
-    # A and B turns into (not A or not B or p) and (A or not p) and (B or not p)
+    # p = A and B turns into (p or not A or not B) and (not p or A) and (not p or B)
     elif operation == 'and':
+        mapping['clauses'].append([new_variable] + [f'not {operand}' for operand in new_operands])
         for operand in new_operands:
             mapping['clauses'].append([f'not {new_variable}', operand])
-        mapping['clauses'].append([new_variable] + [f'not {operand}' for operand in new_operands])
-    # A or B turns into (not A or p) and (not B or p) and (A or B or not p)
+    # p = A or B turns into (p or not A) and (p or not B) and (not p or A or B)
     elif operation == 'or':
         for operand in new_operands:
-            mapping['clauses'].append([f'not {operand}', new_variable])
+            mapping['clauses'].append([new_variable, f'not {operand}'])
         mapping['clauses'].append([f'not {new_variable}'] + new_operands)
 
     return new_variable, counter
@@ -71,7 +71,6 @@ def tseitin_to_smt(formula):
     mapping = {'clauses': []}
     counter = 0
     new_formula, counter = tseitin_transformation(formula, mapping, counter)
-    mapping['clauses'].append([new_formula])
 
     # Translate CNF to SMT-LIB syntax
     smt_list = []
@@ -83,11 +82,14 @@ def tseitin_to_smt(formula):
             else:
                 smt_clause.append(lit)
         smt_list.append(f'(or {" ".join(smt_clause)})')
-    
-    smt_list.append(formula)
 
-    # Return SMT-LIB representation
-    return f'(and {" ".join(smt_list)})'
+    # add back in the mappings for the original variables
+    for key in mapping:
+        if key != 'clauses':
+            smt_list.append(f'(= {key} {mapping[key]})')
+
+    return new_formula, f'(and {" ".join(smt_list)})'
+
 
 # def cnf_to_z3(cnf_list):
 #     vars = {}
