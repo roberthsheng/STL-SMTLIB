@@ -36,8 +36,8 @@ def measured(timeseries_csv):
     # # assert that epsilon is the same for all instances of a signal
     # if len(set(df['epsilon'])) != 1:
     #     raise ValueError('Epsilon must be the same for all instances of a signal')
-    # map signal to epsilon
-    epsilon = {signal: df['epsilon'][0] for signal in set(df['signal'])}
+    # map signal to epsilon so that epsilon[signal] = epsilon
+    epsilon = {signal: df[df['signal'] == signal]['epsilon'].iloc[0] for signal in set(df['signal'])}
     # map signal to time to delta so that deltas[signal][time] = delta
     deltas = {signal: {} for signal in set(df['signal'])}
     for index, row in df.iterrows():
